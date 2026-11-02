@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ネットワーク7層4択クイズ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen p-4">
+<div class="max-w-xl mx-auto">
+  <h1 class="text-2xl font-bold text-center mb-1">ネットワーク7層4択クイズ</h1>
+  <p class="text-center text-gray-400 text-sm mb-4">OSI参照モデルを体系的に学習</p>
+
+  <!-- Layer Reference -->
+  <details class="bg-gray-900 rounded-xl mb-4">
+    <summary class="px-4 py-3 cursor-pointer text-sm text-blue-300 font-medium select-none">📋 7層早見表（参照用）</summary>
+    <div class="px-4 pb-3">
+      <table class="w-full text-xs mt-2 border-collapse">
+        <thead><tr class="text-gray-400"><th class="text-left py-1 w-6">層</th><th class="text-left py-1">名前</th><th class="text-left py-1">主なプロトコル/機器</th></tr></thead>
+        <tbody id="layerRef"></tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- Score -->
+  <div class="flex gap-3 mb-4 text-center text-sm">
+    <div class="flex-1 bg-gray-900 rounded-lg py-2">正解 <span id="correct" class="text-green-400 font-bold">0</span></div>
+    <div class="flex-1 bg-gray-900 rounded-lg py-2">回答数 <span id="total" class="text-gray-300 font-bold">0</span> / 30</div>
+    <div class="flex-1 bg-gray-900 rounded-lg py-2">ハイスコア <span id="hi" class="text-yellow-400 font-bold">0</span></div>
+  </div>
+
+  <!-- Quiz Card -->
+  <div id="quizCard" class="bg-gray-900 rounded-xl p-5 mb-4">
+    <div id="qNum" class="text-xs text-gray-500 mb-2">問題 1 / 30</div>
+    <div id="question" class="text-lg font-semibold mb-4 leading-snug"></div>
+    <div id="choices" class="space-y-2"></div>
+    <div id="feedback" class="mt-3 p-3 rounded-lg text-sm hidden"></div>
+    <button id="nextBtn" onclick="next()" class="mt-3 w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium hidden" aria-label="次の問題">次の問題 →</button>
+  </div>
+
+  <!-- Result -->
+  <div id="result" class="bg-gray-900 rounded-xl p-6 text-center hidden">
+    <div class="text-2xl font-bold text-yellow-300 mb-2">クイズ終了！</div>
+    <div id="finalScore" class="text-4xl font-bold mb-3"></div>
+    <button onclick="restart()" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg" aria-label="もう一度挑戦">もう一度挑戦</button>
+  </div>
+</div>
+
+<script>
+const layers = [
+  { num: 1, name: '物理層',           en: 'Physical',      items: 'ケーブル、リピーター、ハブ' },
+  { num: 2, name: 'データリンク層',    en: 'Data Link',     items: 'イーサネット、MAC、スイッチ、PPP' },
+  { num: 3, name: 'ネットワーク層',    en: 'Network',       items: 'IP、ICMP、ルーター' },
+  { num: 4, name: 'トランスポート層',  en: 'Transport',     items: 'TCP、UDP' },
+  { num: 5, name: 'セッション層',      en: 'Session',       items: 'NetBIOS、RPC、TLS(セッション確立)' },
+  { num: 6, name: 'プレゼンテーション層', en: 'Presentation', items: 'SSL/TLS(暗号化)、JPEG、文字コード変換' },
+  { num: 7, name: 'アプリケーション層', en: 'Application',  items: 'HTTP、HTTPS、FTP、SMTP、DNS、SSH' },
+];
+
+// Build reference table
+document.getElementById('layerRef').innerHTML = layers.map(l =>
+  `<tr class="border-t border-gray-800"><td class="py-1 text-blue-400 font-bold">${l.num}</td><td class="py-1">${l.name}</td><td class="py-1 text-gray-400">${l.items}</td></tr>`
+).join('');
+
+const allQ = [
+  // Layer numbers
+  {q:'HTTPSが動作するのは第何層？', a:'7（アプリケーション層）', opts:['4（トランスポート層）','6（プレゼンテーション層）','7（アプリケーション層）','3（ネットワーク層）'], exp:'HTTPSはアプリケーション層プロトコルです。暗号化はTLSが担いプレゼンテーション層にも関わりますが、主体はL7です。'},
+  {q:'TCPとUDPが属する層は？', a:'第4層（トランスポート層）', opts:['第3層（ネットワーク層）','第4層（トランスポート層）','第5層（セッション層）','第2層（データリンク層）'], exp:'TCPとUDPはトランスポート層で、エンドツーエンドの通信制御を担います。'},
+  {q:'IPアドレスによる経路制御を担う層は？', a:'第3層（ネットワーク層）', opts:['第1層（物理層）','第2層（データリンク層）','第3層（ネットワーク層）','第4層（トランスポート層）'], exp:'ルーターはネットワーク層でIPアドレスを使って経路を決定します。'},
+  {q:'MACアドレスが使われる層は？', a:'第2層（データリンク層）', opts:['第1層（物理層）','第2層（データリンク層）','第3層（ネットワーク層）','第4層（トランスポート層）'], exp:'データリンク層ではMACアドレスを使って同一ネットワーク内の通信を制御します。'},
+  {q:'DNSが動作する層は？', a:'第7層（アプリケーション層）', opts:['第3層（ネットワーク層）','第4層（トランスポート層）','第5層（セッション層）','第7層（アプリケーション層）'], exp:'DNSはドメイン名を解決するアプリケーション層のプロトコルです。'},
+  {q:'SSHが属するOSI層は？', a:'第7層（アプリケーション層）', opts:['第4層','第5層','第6層','第7層（アプリケーション層）'], exp:'SSHはリモートログインを提供するアプリケーション層プロトコルです。'},
+  {q:'SMTP（メール送信）が属する層は？', a:'第7層（アプリケーション層）', opts:['第4層（トランスポート層）','第5層（セッション層）','第6層（プレゼンテーション層）','第7層（アプリケーション層）'], exp:'SMTP・POP3・IMAPなどのメールプロトコルはすべてアプリケーション層です。'},
+  {q:'ICMPが属する層は？', a:'第3層（ネットワーク層）', opts:['第2層','第3層（ネットワーク層）','第4層','第7層'], exp:'ICMPはpingなどに使われるネットワーク層プロトコルです。'},
+  // Devices
+  {q:'スイッチ（L2スイッチ）が動作する層は？', a:'第2層（データリンク層）', opts:['第1層','第2層（データリンク層）','第3層','第4層'], exp:'L2スイッチはMACアドレステーブルを使ってデータリンク層で動作します。'},
+  {q:'ルーターが主に動作する層は？', a:'第3層（ネットワーク層）', opts:['第2層','第3層（ネットワーク層）','第4層','第7層'], exp:'ルーターはIPアドレスによる経路制御を行うネットワーク層デバイスです。'},
+  {q:'ハブ（リピーターハブ）が動作する層は？', a:'第1層（物理層）', opts:['第1層（物理層）','第2層','第3層','第4層'], exp:'ハブは電気信号を増幅・転送するだけで物理層で動作します。'},
+  // Responsibilities
+  {q:'暗号化・文字コード変換を担う層は？', a:'第6層（プレゼンテーション層）', opts:['第4層','第5層','第6層（プレゼンテーション層）','第7層'], exp:'プレゼンテーション層はデータの形式変換・暗号化・圧縮を担います。'},
+  {q:'セッションの確立・維持・終了を担う層は？', a:'第5層（セッション層）', opts:['第4層','第5層（セッション層）','第6層','第7層'], exp:'セッション層はアプリケーション間のセッション管理を担います。'},
+  {q:'フレーミング（フレームの区切り）を担う層は？', a:'第2層（データリンク層）', opts:['第1層','第2層（データリンク層）','第3層','第4層'], exp:'データリンク層はビット列をフレームに分割する役割を持ちます。'},
+  {q:'信頼性のあるデータ転送（再送制御）を担う層は？', a:'第4層（トランスポート層）', opts:['第3層','第4層（トランスポート層）','第5層','第6層'], exp:'TCPがある第4層（トランスポート層）が再送制御・フロー制御を担います。'},
+  {q:'ビット（0/1）の電気・光信号変換を担う層は？', a:'第1層（物理層）', opts:['第1層（物理層）','第2層','第3層','第6層'], exp:'物理層は電気/光/電波信号としてビットを伝送します。'},
+  // Protocols
+  {q:'FTPが属するOSI層は？', a:'第7層（アプリケーション層）', opts:['第3層','第4層','第5層','第7層（アプリケーション層）'], exp:'FTPはファイル転送プロトコルでアプリケーション層に属します。'},
+  {q:'PPP（Point-to-Point Protocol）が属する層は？', a:'第2層（データリンク層）', opts:['第1層','第2層（データリンク層）','第3層','第4層'], exp:'PPPはシリアルリンクで使われるデータリンク層プロトコルです。'},
+  {q:'TLSが主に担う機能と層は？', a:'暗号化（第6層プレゼンテーション層）', opts:['経路制御（第3層）','フロー制御（第4層）','暗号化（第6層プレゼンテーション層）','セッション管理（第5層）'], exp:'TLSはプレゼンテーション層の暗号化を担いますが、セッション確立も行います。'},
+  {q:'UDPの特徴として正しいのは？', a:'コネクションレス・高速・信頼性なし', opts:['コネクション確立が必要','再送制御あり','コネクションレス・高速・信頼性なし','フロー制御あり'], exp:'UDPはTCPと違い、接続確立や再送制御がないため高速ですが信頼性は低いです。'},
+  {q:'TCPの特徴として正しいのは？', a:'3ウェイハンドシェイクでコネクション確立', opts:['3ウェイハンドシェイクでコネクション確立','コネクションレスで高速','再送制御なし','ブロードキャストが主な用途'], exp:'TCPはSYN/SYN-ACK/ACKの3ウェイハンドシェイクで接続を確立します。'},
+  // Number/name matching
+  {q:'OSIモデルで「Network」層は第何層？', a:'第3層', opts:['第2層','第3層','第4層','第5層'], exp:'ネットワーク層（Network Layer）は第3層です。IPアドレスによる経路制御を担います。'},
+  {q:'OSIモデルで「Session」層は第何層？', a:'第5層', opts:['第4層','第5層','第6層','第7層'], exp:'セッション層（Session Layer）は第5層です。'},
+  {q:'OSIモデルで「Presentation」層は第何層？', a:'第6層', opts:['第4層','第5層','第6層','第7層'], exp:'プレゼンテーション層（Presentation Layer）は第6層です。'},
+  {q:'HTTPSのデフォルトポート番号は？', a:'443', opts:['80','443','8080','22'], exp:'HTTPSは443番ポートを使用します。HTTPは80番です。'},
+  {q:'SSHのデフォルトポート番号は？', a:'22', opts:['22','23','80','443'], exp:'SSHは22番ポートを使用します。23番はTelnetです。'},
+  {q:'DNSのデフォルトポート番号は？', a:'53', opts:['53','67','123','161'], exp:'DNSはUDP/TCP 53番ポートを使用します。'},
+  {q:'第1層〜第7層をまとめてOSIの何という？', a:'OSI参照モデル', opts:['TCP/IPモデル','OSI参照モデル','IEEEモデル','ARPAネットモデル'], exp:'Open Systems Interconnection参照モデル（OSI参照モデル）と呼びます。'},
+  {q:'TCP/IPモデルの「インターネット層」はOSI第何層に対応？', a:'第3層（ネットワーク層）', opts:['第2層','第3層（ネットワーク層）','第4層','第5層'], exp:'TCP/IPのインターネット層はOSIのネットワーク層（L3）に対応します。'},
+  {q:'ARP（アドレス解決プロトコル）が動作する層は？', a:'第2〜3層の境界（L2/L3）', opts:['第1層','第2〜3層の境界（L2/L3）','第4層','第7層'], exp:'ARPはIPアドレスからMACアドレスを解決し、L2/L3の境界で動作します。'},
+];
+
+let questions = [], idx = 0, score = 0, answered = false;
+let hi = +(localStorage.getItem('net7_hi') || 0);
+document.getElementById('hi').textContent = hi;
+
+function shuffle(a) { return [...a].sort(() => Math.random() - 0.5); }
+
+function start() {
+  questions = shuffle(allQ).slice(0, 30);
+  idx = 0; score = 0; answered = false;
+  document.getElementById('result').classList.add('hidden');
+  document.getElementById('quizCard').classList.remove('hidden');
+  showQ();
+}
+
+function showQ() {
+  const q = questions[idx];
+  document.getElementById('qNum').textContent = `問題 ${idx + 1} / 30`;
+  document.getElementById('question').textContent = q.q;
+  document.getElementById('feedback').classList.add('hidden');
+  document.getElementById('nextBtn').classList.add('hidden');
+  answered = false;
+
+  const opts = shuffle(q.opts);
+  document.getElementById('choices').innerHTML = opts.map(o =>
+    `<button onclick="answer(this,'${o.replace(/'/g,"\\'")}','${q.a.replace(/'/g,"\\'")}','${q.exp.replace(/'/g,"\\'")}')"
+     class="w-full text-left px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm border border-gray-700 transition"
+     aria-label="${o}">${o}</button>`
+  ).join('');
+  document.getElementById('total').textContent = idx;
+  document.getElementById('correct').textContent = score;
+}
+
+function answer(btn, chosen, correct, exp) {
+  if (answered) return;
+  answered = true;
+  const btns = document.getElementById('choices').querySelectorAll('button');
+  btns.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === correct) b.className = b.className + ' bg-green-800 border-green-500';
+    else if (b.textContent === chosen && chosen !== correct) b.className = b.className + ' bg-red-800 border-red-500';
+  });
+  const fb = document.getElementById('feedback');
+  if (chosen === correct) { score++; fb.textContent = `✓ 正解！ ${exp}`; fb.className = 'mt-3 p-3 rounded-lg text-sm bg-green-900 text-green-200'; }
+  else { fb.textContent = `✗ 不正解。正解: ${correct}。${exp}`; fb.className = 'mt-3 p-3 rounded-lg text-sm bg-red-900 text-red-200'; }
+  fb.classList.remove('hidden');
+  document.getElementById('nextBtn').classList.remove('hidden');
+  document.getElementById('correct').textContent = score;
+}
+
+function next() {
+  idx++;
+  if (idx >= questions.length) { finish(); return; }
+  showQ();
+}
+
+function finish() {
+  document.getElementById('quizCard').classList.add('hidden');
+  document.getElementById('result').classList.remove('hidden');
+  document.getElementById('total').textContent = 30;
+  if (score > hi) { hi = score; localStorage.setItem('net7_hi', hi); document.getElementById('hi').textContent = hi; }
+  document.getElementById('finalScore').textContent = `${score} / 30 (${Math.round(score/30*100)}%)`;
+}
+
+function restart() { start(); }
+start();
+</script>
+</body>
+</html>
